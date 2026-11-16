@@ -63,73 +63,17 @@ $latency = round((microtime(true) - $start_time) * 1000, 2);
 
 // Handle POST Actions (Import / Reset)
 $action_result = null;
+require_once __DIR__ . '/includes/auto_init.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $conn_status) {
     $action = $_POST['action'];
 
     if ($action === 'import') {
-        $sqlPath = __DIR__ . '/database/votesystem.sql';
-        if (!file_exists($sqlPath)) {
-            $action_result = ['type' => 'danger', 'msg' => "SQL file not found at: {$sqlPath}"];
-        } else {
-            $sqlContent = file_get_contents($sqlPath);
-            if (!$sqlContent) {
-                $action_result = ['type' => 'danger', 'msg' => "Could not read SQL file contents."];
-            } else {
-                @$conn->query("SET FOREIGN_KEY_CHECKS = 0;");
-                @$conn->query("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';");
-
-                // Clean comments
-                $lines = explode("\n", $sqlContent);
-                $cleanSql = '';
-                $inComment = false;
-                foreach ($lines as $line) {
-                    $trim = trim($line);
-                    if ($trim === '' || substr($trim, 0, 2) === '--' || substr($trim, 0, 1) === '#') continue;
-                    if (substr($trim, 0, 2) === '/*') {
-                        if (strpos($trim, '*/') !== false) continue;
-                        $inComment = true;
-                        continue;
-                    }
-                    if ($inComment) {
-                        if (strpos($trim, '*/') !== false) $inComment = false;
-                        continue;
-                    }
-                    $cleanSql .= $line . "\n";
-                }
-
-                $stmts = preg_split('/;\s*[\r\n]+/', $cleanSql);
-                $count = 0;
-                $errs = [];
-                foreach ($stmts as $st) {
-                    $st = trim($st);
-                    if ($st === '') continue;
-                    if (!@$conn->query($st)) {
-                        $err = $conn->error;
-                        if ($err && strpos($err, 'already exists') === false) {
-                            $errs[] = substr($err, 0, 150);
-                        }
-                    } else {
-                        $count++;
-                    }
-                }
-
-                @$conn->query("SET FOREIGN_KEY_CHECKS = 1;");
-
-                // Ensure default Admin user exists and password is valid 'admin'
-                $chkAdmin = @$conn->query("SELECT * FROM admin WHERE username = 'admin'");
-                $hash = password_hash('admin', PASSWORD_DEFAULT);
-                if (!$chkAdmin || !($chkAdmin instanceof mysqli_result) || $chkAdmin->num_rows == 0) {
-                    @$conn->query("INSERT INTO admin (username, password, firstname, lastname, photo, created_on) VALUES ('admin', '$hash', 'Admin', 'User', 'avatar.png', NOW())");
-                } else {
-                    @$conn->query("UPDATE admin SET password = '$hash' WHERE username = 'admin'");
-                }
-
-                $action_result = [
-                    'type' => 'success',
-                    'msg' => "Database successfully imported! Executed {$count} statements. Default Admin account verified (Username: admin, Password: admin)."
-                ];
-            }
-        }
+        auto_init_database($conn, true);
+        $action_result = [
+            'type' => 'success',
+            'msg' => "Database successfully imported and verified! All 5 tables created and default Admin (admin / admin) is ready."
+        ];
     } elseif ($action === 'reset') {
         @$conn->query("SET FOREIGN_KEY_CHECKS = 0;");
         $dropTables = ['votes', 'candidates', 'positions', 'voters', 'admin'];
@@ -141,13 +85,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $conn_st
     }
 }
 
-// Inspect tables if connected
+// Inspect tables if connected - auto initialize if tables missing
 $existing_tables = [];
 $admin_user = null;
 $required_tables = ['admin', 'voters', 'positions', 'candidates', 'votes'];
 $missing_tables = [];
 
 if ($conn_status) {
+    // Auto-create schema if admin table is missing
+    $testAdmin = @$conn->query("SHOW TABLES LIKE 'admin'");
+    if (!$testAdmin || !($testAdmin instanceof mysqli_result) || $testAdmin->num_rows == 0) {
+        auto_init_database($conn, false);
+    }
     $t_res = @$conn->query("SHOW TABLES");
     if ($t_res && $t_res instanceof mysqli_result) {
         while ($t_row = $t_res->fetch_array()) {

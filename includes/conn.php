@@ -121,5 +121,11 @@ if ($conn->connect_error) {
         </html>
         ");
     }
+} else {
+    // Auto-initialize tables and default admin on successful connection
+    if (file_exists(__DIR__ . '/auto_init.php')) {
+        require_once __DIR__ . '/auto_init.php';
+        auto_init_database($conn);
+    }
 }
 ?>
