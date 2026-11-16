@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: voting-management-system
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DB_SERVER
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: votesystem
+      - key: DB_SSL
+        value: "true"
+      - key: BASE_URL
+        sync: false

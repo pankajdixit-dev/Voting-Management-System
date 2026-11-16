@@ -1,0 +1,27 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Detect HTTPS behind Render Reverse Proxy / Cloudflare / Load Balancers
+    RewriteCond %{HTTP:X-Forwarded-Proto} =https
+    RewriteRule ^ - [E=HTTPS_ON:on]
+
+    # Port-stripping trailing slash redirect for directories:
+    # Intercepts directory requests lacking trailing slash to prevent :10000 port leak
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} !/$
+    RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
+    RewriteCond %{HTTPS} on
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1/ [R=301,L]
+
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} !/$
+    RewriteRule ^(.*)$ http://%{HTTP_HOST}/$1/ [R=301,L]
+</IfModule>
+
+# Security Options
+Options -Indexes
+ServerSignature Off
+
+# UTF-8 Encoding default
+AddDefaultCharset UTF-8
