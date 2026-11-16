@@ -115,11 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $conn_st
 
                 @$conn->query("SET FOREIGN_KEY_CHECKS = 1;");
 
-                // Ensure default Admin user exists
+                // Ensure default Admin user exists and password is valid 'admin'
                 $chkAdmin = @$conn->query("SELECT * FROM admin WHERE username = 'admin'");
+                $hash = password_hash('admin', PASSWORD_DEFAULT);
                 if (!$chkAdmin || !($chkAdmin instanceof mysqli_result) || $chkAdmin->num_rows == 0) {
-                    $hash = '$2y$10$YJ3jSw58dqOEurW9fUgCLuhXcvpKTR01HEcEEJ41tneB7vxeG.eiK'; // 'admin'
                     @$conn->query("INSERT INTO admin (username, password, firstname, lastname, photo, created_on) VALUES ('admin', '$hash', 'Admin', 'User', 'avatar.png', NOW())");
+                } else {
+                    @$conn->query("UPDATE admin SET password = '$hash' WHERE username = 'admin'");
                 }
 
                 $action_result = [

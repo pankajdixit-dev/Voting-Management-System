@@ -9,6 +9,17 @@
       header('location: home.php');
       exit();
     }
+
+    $tableNotice = false;
+    if(file_exists('includes/conn.php')){
+        include_once 'includes/conn.php';
+        if(isset($conn) && $conn && !$conn->connect_error){
+            $chk = @$conn->query("SHOW TABLES LIKE 'voters'");
+            if(!$chk || !($chk instanceof mysqli_result) || $chk->num_rows == 0){
+                $tableNotice = true;
+            }
+        }
+    }
 ?>
 <?php include 'includes/header.php'; ?>
 <body class="hold-transition login-page">
@@ -19,6 +30,16 @@
   
   	<div class="login-box-body">
     	<p class="login-box-msg">Sign in to start your session</p>
+
+      <?php if($tableNotice): ?>
+        <div class="callout callout-warning text-center" style="margin-bottom: 15px; background-color: #fef3c7 !important; color: #92400e !important; border-color: #f59e0b;">
+            <p style="margin-bottom: 6px;"><b><i class="fa fa-database"></i> Database Empty / Not Initialized</b></p>
+            <p style="font-size: 13px; margin-bottom: 8px;">Pehle 1-Click Import tool se database tables install karein:</p>
+            <a href="db_setup.php" class="btn btn-warning btn-xs" style="color: #000; font-weight: bold; padding: 5px 12px;">
+                <i class="fa fa-download"></i> Open Database Setup Tool &rarr;
+            </a>
+        </div>
+      <?php endif; ?>
 
     	<form action="login.php" method="POST">
       		<div class="form-group has-feedback">
